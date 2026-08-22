@@ -23,6 +23,12 @@ async function createPublication(context, markdown) {
   return root;
 }
 
+async function writeContributionImage(root, name) {
+  const imageRoot = path.join(root, "contributions", "resources");
+  await mkdir(imageRoot, { recursive: true });
+  await writeFile(path.join(imageRoot, name), "PNG fixture");
+}
+
 test("validates the repository content", async () => {
   await validatePublication(publicationRoot);
 });
@@ -84,6 +90,82 @@ test("validates contribution notes by Pull Request number", async (context) => {
   );
 
   await validatePublication(root);
+});
+
+test("allows supported local images in a contribution note", async (context) => {
+  const root = await createPublication(
+    context,
+    "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+  );
+  const images = [
+    "12345-debugger.png",
+    "12345-photo.jpg",
+    "12345-screenshot.jpeg",
+    "12345-output.webp",
+    "12345-animation.gif",
+  ];
+  await writeFile(
+    path.join(root, "contributions", "12345.md"),
+    `---\npr-url: https://github.com/nodejs/node/pull/12345\n---\n## Verification\n\n${images.map((image) => `![image](./resources/${image})`).join("\n\n")}\n`,
+  );
+  await Promise.all(images.map((image) => writeContributionImage(root, image)));
+
+  await validatePublication(root);
+});
+
+test("rejects an unsupported contribution image type", async (context) => {
+  const root = await createPublication(
+    context,
+    "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+  );
+  await writeFile(
+    path.join(root, "contributions", "12345.md"),
+    "---\npr-url: https://github.com/nodejs/node/pull/12345\n---\n## Verification\n\n![diagram](./resources/12345-diagram.svg)\n",
+  );
+  await writeContributionImage(root, "12345-diagram.svg");
+
+  await assert.rejects(validatePublication(root), /PNG, JPEG, WebP 또는 GIF/);
+});
+
+test("rejects a root-relative contribution image", async (context) => {
+  const root = await createPublication(
+    context,
+    "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+  );
+  await writeFile(
+    path.join(root, "contributions", "12345.md"),
+    "---\npr-url: https://github.com/nodejs/node/pull/12345\n---\n## Verification\n\n![debugger](/contributions/resources/12345-debugger.png)\n",
+  );
+  await writeContributionImage(root, "12345-debugger.png");
+
+  await assert.rejects(validatePublication(root), /\.\/resources\/<PR번호>/);
+});
+
+test("rejects an image for another Pull Request", async (context) => {
+  const root = await createPublication(
+    context,
+    "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+  );
+  await writeFile(
+    path.join(root, "contributions", "12345.md"),
+    "---\npr-url: https://github.com/nodejs/node/pull/12345\n---\n## Verification\n\n![debugger](./resources/54321-debugger.png)\n",
+  );
+  await writeContributionImage(root, "54321-debugger.png");
+
+  await assert.rejects(validatePublication(root), /Pull Request 번호가 일치하지 않습니다/);
+});
+
+test("rejects a missing contribution image", async (context) => {
+  const root = await createPublication(
+    context,
+    "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+  );
+  await writeFile(
+    path.join(root, "contributions", "12345.md"),
+    "---\npr-url: https://github.com/nodejs/node/pull/12345\n---\n## Verification\n\n![debugger](./resources/12345_debugger.png)\n",
+  );
+
+  await assert.rejects(validatePublication(root), /이미지 파일을 찾을 수 없습니다/);
 });
 
 test("allows an optional source URL for a contribution note", async (context) => {

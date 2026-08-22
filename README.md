@@ -28,6 +28,16 @@ pr-url: https://github.com/nodejs/node/pull/12345
 기여하며 배운 내용을 적습니다.
 ```
 
+이미지는 contributions/resources에 저장하고, PR 번호가 포함된 상대 경로로 참조합니다.
+
+```text
+contributions/resources/12345-debugger.png
+```
+
+```md
+![검증 화면](./resources/12345-debugger.png)
+```
+
 ## profiles
 
 기여자 이름에서 연결되는 프로필 페이지에 표시됩니다.

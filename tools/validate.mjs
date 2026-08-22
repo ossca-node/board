@@ -6,6 +6,8 @@ import { parse } from "yaml";
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
 const SLUG = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 const PR_NUMBER = /^[1-9]\d*$/;
+const CONTRIBUTION_IMAGE = /^([1-9]\d*)[-_]([A-Za-z0-9][A-Za-z0-9_-]*)\.(png|jpe?g|webp|gif)$/;
+const CONTRIBUTION_IMAGE_TARGET = /^\.\/resources\/(([1-9]\d*)[-_][A-Za-z0-9][A-Za-z0-9_-]*\.(?:png|jpe?g|webp|gif))$/;
 const INTERNAL_RESOURCE_LINK = /^\?view=resources&resource=([a-z0-9]+(?:-[a-z0-9]+)*)$/;
 const UNSAFE_MARKUP = /<(?:embed|iframe|link|object|script|style)\b|\son[a-z]+\s*=/i;
 
@@ -63,7 +65,7 @@ function validateResourceMetadata(source, file) {
   }
 }
 
-async function validateContribution(publicationRoot, entry) {
+async function validateContribution(publicationRoot, entry, images) {
   const label = `contributions/${entry.name}`;
   requireValue(
     entry.isFile() && entry.name.endsWith(".md"),
@@ -103,7 +105,29 @@ async function validateContribution(publicationRoot, entry) {
     const url = urlMatch[1].trim().replace(/^["']|["']$/g, "");
     requireValue(/^https?:\/\//i.test(url), `${label}: url은 http 또는 https여야 합니다.`);
   }
-  markdownBody(source, label, false, false);
+  const markdown = markdownBody(source, label, false, false);
+  for (const rawTarget of imageTargets(markdown)) {
+    const imageTarget = CONTRIBUTION_IMAGE_TARGET.exec(rawTarget);
+    requireValue(
+      imageTarget,
+      `${label}: 이미지는 ./resources/<PR번호>-<이름>.<확장자> 형식이어야 합니다: ${rawTarget}`,
+    );
+    requireValue(
+      imageTarget[2] === number,
+      `${label}: 이미지 파일의 Pull Request 번호가 일치하지 않습니다: ${rawTarget}`,
+    );
+    requireValue(
+      images.has(imageTarget[1]),
+      `${label}: 이미지 파일을 찾을 수 없습니다: ${rawTarget}`,
+    );
+  }
+}
+
+function imageTargets(markdown) {
+  const targets = [];
+  const image = /!\[[^\]]*\]\((?:<([^>]+)>|([^\s)]+))(?:\s+["'][^"']*["'])?\)/g;
+  for (const match of markdown.matchAll(image)) targets.push(match[1] ?? match[2]);
+  return targets;
 }
 
 function relativeTargets(markdown) {
@@ -120,6 +144,22 @@ async function validateFile(file, label) {
   requireValue(!stats.isSymbolicLink(), `${label}: symlink는 허용하지 않습니다.`);
   requireValue(stats.isFile(), `${label}: 일반 파일이어야 합니다.`);
   requireValue(stats.size <= MAX_FILE_SIZE, `${label}: 파일 크기는 10MB 이하여야 합니다.`);
+}
+
+async function validateContributionImages(publicationRoot, entry) {
+  const root = path.join(publicationRoot, "contributions", entry.name);
+  const images = new Set();
+  for (const imageEntry of await readdir(root, { withFileTypes: true })) {
+    const label = `contributions/resources/${imageEntry.name}`;
+    requireValue(
+      imageEntry.isFile() && CONTRIBUTION_IMAGE.test(imageEntry.name),
+      `${label}: <PR번호>-<이름> 형식의 PNG, JPEG, WebP 또는 GIF 파일이어야 합니다.`,
+    );
+    const imagePath = path.join(root, imageEntry.name);
+    await validateFile(imagePath, label);
+    images.add(imageEntry.name);
+  }
+  return images;
 }
 
 async function validateResource(publicationRoot, slug, slugs) {
@@ -216,9 +256,18 @@ export async function validatePublication(publicationRoot) {
   }
 
   const contributionsRoot = path.join(publicationRoot, "contributions");
+  const contributionEntries = await readdir(contributionsRoot, { withFileTypes: true });
+  const imageEntry = contributionEntries.find((entry) => entry.name === "resources");
+  if (imageEntry) {
+    requireValue(imageEntry.isDirectory(), "contributions/resources: 디렉터리여야 합니다.");
+  }
+  const images = imageEntry
+    ? await validateContributionImages(publicationRoot, imageEntry)
+    : new Set();
   await Promise.all(
-    (await readdir(contributionsRoot, { withFileTypes: true }))
-      .map((entry) => validateContribution(publicationRoot, entry)),
+    contributionEntries
+      .filter((entry) => entry !== imageEntry)
+      .map((entry) => validateContribution(publicationRoot, entry, images)),
   );
 }
 
