@@ -92,6 +92,61 @@ test("validates contribution notes by Pull Request number", async (context) => {
   await validatePublication(root);
 });
 
+test("allows HTML-like markup in fenced and inline code", async (context) => {
+  const root = await createPublication(
+    context,
+    "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+  );
+  await writeFile(
+    path.join(root, "contributions", "12345.md"),
+    `---
+pr-url: https://github.com/nodejs/node/pull/12345
+---
+## Verification
+
+\`\`\`cpp
+std::vector<Global<Object>> out;
+\`\`\`
+
+\`Global<Object>\`
+
+\`\`\`html
+<object data="example"></object>
+\`\`\`
+`,
+  );
+
+  await validatePublication(root);
+});
+
+test("rejects unsafe raw HTML outside code", async (context) => {
+  const cases = [
+    ["object element", '<object data="example"></object>'],
+    ["event handler", '<img src="x" onerror="alert(1)">'],
+  ];
+
+  for (const [name, unsafeHtml] of cases) {
+    await context.test(name, async (context) => {
+      const root = await createPublication(
+        context,
+        "---\nauthors: [github-id]\n---\n# Guide\n\nShort description.\n",
+      );
+      await writeFile(
+        path.join(root, "contributions", "12345.md"),
+        `---
+pr-url: https://github.com/nodejs/node/pull/12345
+---
+## Verification
+
+${unsafeHtml}
+`,
+      );
+
+      await assert.rejects(validatePublication(root), /unsafe HTML/);
+    });
+  }
+});
+
 test("allows supported local images in a contribution note", async (context) => {
   const root = await createPublication(
     context,

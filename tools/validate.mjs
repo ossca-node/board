@@ -1,6 +1,7 @@
 import { lstat, readFile, readdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
+import { fromMarkdown } from "mdast-util-from-markdown";
 import { parse } from "yaml";
 
 const MAX_FILE_SIZE = 10 * 1024 * 1024;
@@ -15,6 +16,11 @@ function requireValue(condition, message) {
   if (!condition) throw new Error(message);
 }
 
+function containsUnsafeMarkup(node) {
+  if (node.type === "html" && UNSAFE_MARKUP.test(node.value)) return true;
+  return node.children?.some(containsUnsafeMarkup) ?? false;
+}
+
 function markdownBody(source, file, resource, headingRequired = true) {
   const normalized = source.replace(/\r\n?/g, "\n").trim();
   let markdown = normalized;
@@ -24,7 +30,10 @@ function markdownBody(source, file, resource, headingRequired = true) {
     markdown = normalized.slice(closingFence + 5).trim();
   }
 
-  requireValue(!UNSAFE_MARKUP.test(markdown), `${file}: unsafe HTML을 포함할 수 없습니다.`);
+  requireValue(
+    !containsUnsafeMarkup(fromMarkdown(markdown)),
+    `${file}: unsafe HTML을 포함할 수 없습니다.`,
+  );
   const [heading = "", ...remainingLines] = markdown.split("\n");
   if (headingRequired) {
     requireValue(/^#\s+\S/.test(heading.trim()), `${file}: 첫 요소는 제목이어야 합니다.`);
