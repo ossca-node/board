@@ -1,0 +1,37 @@
+{
+  "schemaVersion": 1,
+  "buildId": "33983236037-1",
+  "years": [
+    {
+      "year": 2026,
+      "path": "2026.bin",
+      "startDate": "2026-07-11",
+      "endDate": "2026-10-05",
+      "dataCutoff": "2026-09-06",
+      "collectedAt": "2026-09-05T18:12:33Z",
+      "isCurrent": true,
+      "participantCount": 15,
+      "pullRequestCount": 102
+    },
+    {
+      "year": 2025,
+      "path": "2025.bin",
+      "startDate": "2025-07-12",
+      "endDate": "2025-10-15",
+      "dataCutoff": "2025-10-20",
+      "isCurrent": false,
+      "participantCount": 14,
+      "pullRequestCount": 83
+    },
+    {
+      "year": 2024,
+      "path": "2024.bin",
+      "startDate": "2024-07-13",
+      "endDate": "2024-10-06",
+      "dataCutoff": "2024-10-13",
+      "isCurrent": false,
+      "participantCount": 14,
+      "pullRequestCount": 75
+    }
+  ]
+}

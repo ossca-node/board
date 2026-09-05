@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f6f8fa" />
+    <meta name="description" content="연도별 Node.js 기여 활동 기록" />
+    <script data-color-mode-bootstrap>
+      (() => {
+        let storedMode = null;
+        try {
+          storedMode = window.localStorage.getItem("color-mode");
+        } catch {}
+        const colorMode = storedMode === "light" || storedMode === "dark"
+          ? storedMode
+          : window.matchMedia?.("(prefers-color-scheme: dark)").matches
+            ? "dark"
+            : "light";
+        document.documentElement.dataset.colorMode = colorMode;
+        document.querySelector('meta[name="theme-color"]')?.setAttribute(
+          "content",
+          colorMode === "dark" ? "#0b1520" : "#f6f8fa",
+        );
+      })();
+    </script>
+    <style data-color-mode-bootstrap>
+      html, body { background-color: #f1f3f0; }
+      html[data-color-mode="dark"], html[data-color-mode="dark"] body { background-color: #0b1520; }
+    </style>
+    <link rel="icon" type="image/svg+xml" href="/board/images/nodejsHex.svg" />
+    <link rel="preconnect" href="https://github.com" />
+    <link rel="preconnect" href="https://avatars.githubusercontent.com" />
+    <title>OSSCA Node.js Contribution Board</title>
+    <script type="module" crossorigin src="/board/assets/index-DwF3KEhr.js"></script>
+    <link rel="modulepreload" crossorigin href="/board/assets/rolldown-runtime-Dd_uD5pT.js">
+    <link rel="stylesheet" crossorigin href="/board/assets/index-byO2Yrj1.css">
+  </head>
+  <body>
+    <div id="root"></div>
+  </body>
+</html>
