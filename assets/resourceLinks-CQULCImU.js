@@ -1,0 +1,1 @@
+function e(e,t,n){!n||e.button!==0||e.metaKey||e.ctrlKey||e.shiftKey||e.altKey||(e.preventDefault(),e.currentTarget.closest(`details`)?.removeAttribute(`open`),n(t))}export{e as t};
